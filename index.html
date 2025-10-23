@@ -3,189 +3,104 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Protected ORB</title>
+  <title>Protected Scratch Game</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob:;">
   <style>
-    html, body {
-      height: 100%;
+    body {
       margin: 0;
-      background: #000;
-      color: #fff;
+      background-color: black;
+      color: white;
       font-family: sans-serif;
+      text-align: center;
+    }
+    #password-screen, #game-screen {
+      position: absolute;
+      inset: 0;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
     }
-    #lockScreen {
-      text-align: center;
-    }
-    input {
+    #game-screen { display: none; }
+    input[type="password"] {
       padding: 10px;
-      border-radius: 6px;
+      font-size: 1rem;
+      border-radius: 8px;
       border: none;
-      font-size: 16px;
-      width: 200px;
+      outline: none;
+      margin-top: 10px;
       text-align: center;
     }
     button {
-      padding: 10px 20px;
-      border-radius: 6px;
-      border: none;
-      background: #3ba5ff;
-      color: #000;
-      font-weight: bold;
-      cursor: pointer;
-      margin-left: 5px;
-    }
-    #error {
-      color: #ff7c7c;
       margin-top: 10px;
-    }
-    #gameContainer {
-      display: none;
-      width: 100%;
-      height: 100%;
-    }
-    iframe {
-      width: 100%;
-      height: 100%;
+      padding: 10px 20px;
       border: none;
+      border-radius: 8px;
+      background: #4CAF50;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <div id="lockScreen">
-    <h2>Enter Password to Play</h2>
-    <input type="password" id="password" placeholder="Password">
-    <button id="unlock">Unlock</button>
-    <div id="error"></div>
+  <!-- Password Lock -->
+  <div id="password-screen">
+    <h1>Enter Password to Play</h1>
+    <input type="password" id="password-input" placeholder="Password">
+    <button id="unlock-btn">Unlock</button>
+    <p id="error" style="color:red;display:none;">Incorrect password.</p>
   </div>
 
-  <div id="gameContainer">
-    <!-- Game will be inserted here after unlock -->
+  <!-- Game Container -->
+  <div id="game-screen">
+    <div id="app"></div>
   </div>
 
   <script>
-    // 🔒 Change your password here
-    const PASSWORD = "orb123";
+    const PASSWORD = "orb123"; // 🔒 Change this to your password
 
-    const unlockBtn = document.getElementById("unlock");
-    const passwordInput = document.getElementById("password");
-    const errorDiv = document.getElementById("error");
-    const lockScreen = document.getElementById("lockScreen");
-    const gameContainer = document.getElementById("gameContainer");
-
-    unlockBtn.addEventListener("click", tryUnlock);
-    passwordInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") tryUnlock();
+    document.getElementById("unlock-btn").addEventListener("click", () => {
+      const entered = document.getElementById("password-input").value;
+      if (entered === PASSWORD) {
+        document.getElementById("password-screen").style.display = "none";
+        document.getElementById("game-screen").style.display = "flex";
+        startGame(); // load your Scratch game
+      } else {
+        document.getElementById("error").style.display = "block";
+      }
     });
 
-    function tryUnlock() {
-      const entered = passwordInput.value.trim();
-      if (entered === PASSWORD) {
-        unlockGame();
-      } else {
-        errorDiv.textContent = "Incorrect password.";
+    async function startGame() {
+      try {
+        const script = document.createElement("script");
+        script.src = "script.js"; // TurboWarp packaged JS file
+        script.onload = initGame;
+        document.body.appendChild(script);
+      } catch (e) {
+        console.error(e);
       }
     }
 
-    function unlockGame() {
-      lockScreen.style.display = "none";
-      gameContainer.style.display = "block";
-
-      // 🧩 Inject the actual game directly here
-      gameContainer.innerHTML = `
-      <div id="app"></div>
-      <div id="launch" class="screen" hidden title="Click to start">
-        <div class="green-flag">
-          <svg viewBox="0 0 16.63 17.5" width="42" height="44">
-            <defs><style>.cls-1,.cls-2{fill:#4cbf56;stroke:#45993d;stroke-linecap:round;stroke-linejoin:round;}.cls-2{stroke-width:1.5px;}</style></defs>
-            <path class="cls-1" d="M.75,2A6.44,6.44,0,0,1,8.44,2h0a6.44,6.44,0,0,0,7.69,0V12.4a6.44,6.44,0,0,1-7.69,0h0a6.44,6.44,0,0,0-7.69,0"/>
-            <line class="cls-2" x1="0.75" y1="16.75" x2="0.75" y2="0.75"/>
-          </svg>
-        </div>
-      </div>
-
-      <div id="loading" class="screen"></div>
-      <div id="error" class="screen" hidden>
-        <h1>Error</h1>
-        <details>
-          <summary id="error-message"></summary>
-          <p id="error-stack"></p>
-        </details>
-      </div>
-
-      <script src="script.js"><\/script>
-      <script>
+    async function initGame() {
+      try {
         const appElement = document.getElementById('app');
-        const launchScreen = document.getElementById('launch');
-        const loadingScreen = document.getElementById('loading');
-        const errorScreen = document.getElementById('error');
-        const errorScreenMessage = document.getElementById('error-message');
-        const errorScreenStack = document.getElementById('error-stack');
+        const scaffolding = new Scaffolding.Scaffolding();
+        scaffolding.width = 480;
+        scaffolding.height = 360;
+        scaffolding.setup();
+        scaffolding.appendTo(appElement);
 
-        const handleError = (error) => {
-          console.error(error);
-          if (!errorScreen.hidden) return;
-          errorScreen.hidden = false;
-          errorScreenMessage.textContent = '' + error;
-          let debug = error && error.stack || 'no stack';
-          debug += '\\nUser agent: ' + navigator.userAgent;
-          errorScreenStack.textContent = debug;
-        };
-        const setProgress = (progress) => {};
-        const interpolate = (a, b, t) => a + t * (b - a);
+        const vm = scaffolding.vm;
+        scaffolding.setUsername("player" + Math.floor(Math.random() * 9999));
 
-        try {
-          setProgress(0.1);
-
-          const scaffolding = new Scaffolding.Scaffolding();
-          scaffolding.width = 480;
-          scaffolding.height = 360;
-          scaffolding.resizeMode = "preserve-ratio";
-          scaffolding.usePackagedRuntime = true;
-          scaffolding.setup();
-          scaffolding.appendTo(appElement);
-
-          const vm = scaffolding.vm;
-          window.vm = vm;
-
-          scaffolding.setUsername("player" + Math.floor(Math.random()*1000));
-          scaffolding.setAccentColor("#ff4c4c");
-
-          vm.setTurboMode(false);
-          vm.setFramerate(30);
-
-          const getProjectData = (function() {
-            const storage = scaffolding.storage;
-            storage.addWebStore(
-              [
-                storage.AssetType.ImageVector,
-                storage.AssetType.ImageBitmap,
-                storage.AssetType.Sound,
-                storage.AssetType.Font
-              ].filter(i => i),
-              (asset) => new URL('./assets/' + asset.assetId + '.' + asset.dataFormat, location).href
-            );
-            return () => new Promise((resolve, reject) => {
-              const xhr = new XMLHttpRequest();
-              xhr.onload = () => resolve(xhr.response);
-              xhr.onerror = () => reject(new Error('Failed to load project.'));
-              xhr.responseType = 'arraybuffer';
-              xhr.open('GET', "./assets/project.json");
-              xhr.send();
-            });
-          })();
-
-          (async()=>{
-            const data = await getProjectData();
-            await scaffolding.loadProject(data);
-            scaffolding.start();
-          })().catch(handleError);
-
-        } catch (e) {
-          handleError(e);
-        }
-      <\/script>`;
+        const projectResponse = await fetch("./assets/project.json");
+        const projectData = await projectResponse.arrayBuffer();
+        await scaffolding.loadProject(projectData);
+        scaffolding.start();
+      } catch (e) {
+        console.error("Error starting game:", e);
+      }
     }
   </script>
 </body>
