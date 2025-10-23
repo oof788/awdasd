@@ -1,112 +1,83 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Password Protected Game</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob:;">
-  <style>
-    body {
-      margin: 0;
-      background: black;
-      color: white;
-      font-family: sans-serif;
-      text-align: center;
-    }
-    #lock, #game {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-    }
-    #game { display: none; }
-    input {
-      padding: 10px;
-      border-radius: 6px;
-      border: none;
-      text-align: center;
-      font-size: 1rem;
-    }
-    button {
-      margin-top: 10px;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 6px;
-      background: #4CAF50;
-      color: white;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Password Protected Scratch Game</title>
+<style>
+  body {
+    margin: 0;
+    background: black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: white;
+    font-family: Arial, sans-serif;
+  }
+  #lockScreen, #gameContainer {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+  }
+  #lockScreen {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  input {
+    padding: 10px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 5px;
+    text-align: center;
+  }
+  button {
+    margin-top: 10px;
+    padding: 10px 20px;
+    background: #333;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #555;
+  }
+  iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: none;
+  }
+</style>
 </head>
 <body>
-  <div id="lock">
-    <h2>Enter Password to Play</h2>
-    <input type="password" id="pass" placeholder="Password">
-    <button id="go">Unlock</button>
-    <p id="err" style="color:red;display:none;">Incorrect password.</p>
-  </div>
 
-  <div id="game">
-    <div id="app"></div>
-  </div>
+<div id="lockScreen">
+  <h1>🔒 Enter Password</h1>
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="unlock()">Unlock</button>
+</div>
 
-  <script>
-    const PASSWORD = "orb123"; // change this
+<iframe id="gameFrame" src=""></iframe>
 
-    document.getElementById("go").addEventListener("click", async () => {
-      const val = document.getElementById("pass").value;
-      if (val === PASSWORD) {
-        document.getElementById("lock").style.display = "none";
-        document.getElementById("game").style.display = "flex";
-        await loadGame();
-      } else {
-        document.getElementById("err").style.display = "block";
-      }
-    });
+<script>
+  const correctPassword = "letmein"; // Change this to your desired password
 
-    async function loadGame() {
-      // dynamically load TurboWarp script
-      const script = document.createElement("script");
-      script.src = "script.js";
-      script.onload = init;
-      document.body.appendChild(script);
+  function unlock() {
+    const entered = document.getElementById("password").value;
+    if (entered === correctPassword) {
+      document.getElementById("lockScreen").style.display = "none";
+      const frame = document.getElementById("gameFrame");
+      frame.src = "./index.html"; // The Scratch game’s HTML file (from extracted ZIP)
+      frame.style.display = "block";
+    } else {
+      alert("Incorrect password!");
     }
+  }
+</script>
 
-    async function init() {
-      try {
-        const scaffolding = new Scaffolding.Scaffolding();
-        scaffolding.width = 480;
-        scaffolding.height = 360;
-        scaffolding.resizeMode = "preserve-ratio";
-        scaffolding.setup();
-        scaffolding.appendTo(document.getElementById("app"));
-
-        const vm = scaffolding.vm;
-
-        // Load all assets from /assets/
-        scaffolding.storage.addWebStore(
-          [
-            scaffolding.storage.AssetType.ImageVector,
-            scaffolding.storage.AssetType.ImageBitmap,
-            scaffolding.storage.AssetType.Sound,
-            scaffolding.storage.AssetType.Font
-          ],
-          (asset) => new URL("./assets/" + asset.assetId + "." + asset.dataFormat, location).href
-        );
-
-        // Load project.json
-        const response = await fetch("./assets/project.json");
-        const arrayBuffer = await response.arrayBuffer();
-        await scaffolding.loadProject(arrayBuffer);
-        scaffolding.start();
-      } catch (err) {
-        console.error(err);
-        alert("Error loading game: " + err);
-      }
-    }
-  </script>
 </body>
 </html>
