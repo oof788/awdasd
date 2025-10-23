@@ -1,83 +1,179 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Password Protected Scratch Game</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Play — Login</title>
+<meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob:;">
 <style>
-  body {
-    margin: 0;
-    background: black;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    color: white;
-    font-family: Arial, sans-serif;
-  }
-  #lockScreen, #gameContainer {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-  }
-  #lockScreen {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-  }
-  input {
-    padding: 10px;
-    margin-top: 10px;
-    border: none;
-    border-radius: 5px;
-    text-align: center;
-  }
-  button {
-    margin-top: 10px;
-    padding: 10px 20px;
-    background: #333;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-  button:hover {
-    background: #555;
-  }
-  iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-    display: none;
-  }
+  :root{--bg:#071026;--card:#0f1724;--accent:#60c7ff;--muted:#9aa7b2}
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,#020611,#071026);color:#e6eef6}
+  .center{min-height:100%;display:flex;align-items:center;justify-content:center;padding:28px}
+  .card{width:100%;max-width:920px;border-radius:12px;padding:22px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));box-shadow:0 10px 40px rgba(0,0,0,0.6)}
+  h1{margin:0 0 6px;font-size:20px}
+  .muted{color:var(--muted);font-size:13px;margin-bottom:12px}
+  .form{display:flex;gap:8px;flex-direction:column;align-items:center}
+  input[type="text"],input[type="password"]{width:320px;max-width:90%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.05);background:transparent;color:inherit;font-size:15px}
+  .row{display:flex;gap:8px;align-items:center}
+  button{padding:10px 14px;border-radius:9px;border:0;background:var(--accent);color:#022;cursor:pointer;font-weight:700}
+  .secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+  .error{color:#ffb4b4;font-size:13px}
+  #gameWrap{display:none;height:100vh;width:100vw;padding:0;margin:0}
+  iframe{width:100%;height:100%;border:0;display:block}
+  .small{font-size:13px;color:var(--muted)}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .footer{margin-top:12px;font-size:13px;color:var(--muted);text-align:center}
 </style>
 </head>
 <body>
+  <div class="center">
+    <div id="loginCard" class="card" role="main" aria-live="polite">
+      <div class="topbar">
+        <div>
+          <h1>Sign in to play</h1>
+          <div class="muted">Enter username and password to load the game</div>
+        </div>
+        <div class="small">Local only — no servers</div>
+      </div>
 
-<div id="lockScreen">
-  <h1>🔒 Enter Password</h1>
-  <input type="password" id="password" placeholder="Password">
-  <button onclick="unlock()">Unlock</button>
-</div>
+      <div class="form" id="loginForm">
+        <input id="username" type="text" autocomplete="username" placeholder="Username" />
+        <input id="password" type="password" autocomplete="current-password" placeholder="Password" />
+        <div class="row">
+          <button id="btnLogin">Sign in</button>
+          <button id="btnDemo" class="secondary">Demo</button>
+        </div>
+        <div id="msg" class="error" aria-live="assertive"></div>
+        <div class="footer">Tip: Press Enter to submit. To change users open the file and edit the credentials map.</div>
+      </div>
+    </div>
+  </div>
 
-<iframe id="gameFrame"></iframe>
+  <div id="gameWrap" aria-hidden="true">
+    <iframe id="gameFrame" src=""></iframe>
+  </div>
 
 <script>
-  const correctPassword = "letmein"; // ← change this password
+/*
+  Single-file username+password gate (client-side).
+  - Change GAME_PATH if your game filename/name differs.
+  - To add users, generate SHA-256 of the password (helper below) and place it in the CREDENTIALS map.
+  - This is NOT secure against someone who can open the folder or read this file.
+*/
 
-  function unlock() {
-    const entered = document.getElementById("password").value;
-    if (entered === correctPassword) {
-      document.getElementById("lockScreen").style.display = "none";
-      const frame = document.getElementById("gameFrame");
-      frame.src = "./game.html"; // ← renamed Scratch game HTML
-      frame.style.display = "block";
-    } else {
-      alert("Incorrect password!");
-    }
+const GAME_PATH = "./game.html"; // <-- rename your Scrath export HTML to this (or change path)
+const MAX_ATTEMPTS = 5;
+const LOCK_MS = 30000; // lockout after too many failures
+
+// Credentials map: username -> sha256(password) (hex lowercase)
+const CREDENTIALS = {
+  // example user: user:pass123
+  "player": "66b27417d37e024c46526c2f6d358a754fc552f3d5d1cd6a6a0d9f0a1b9f6f5e",
+  // add more: "alice": "<sha256 hex>", ...
+};
+
+/* UTILS */
+function bufToHex(buffer) {
+  const bytes = new Uint8Array(buffer);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+async function sha256hex(str) {
+  const enc = new TextEncoder();
+  const hash = await crypto.subtle.digest('SHA-256', enc.encode(str));
+  return bufToHex(hash);
+}
+
+/* UI */
+const usernameEl = document.getElementById('username');
+const passwordEl = document.getElementById('password');
+const btnLogin = document.getElementById('btnLogin');
+const btnDemo = document.getElementById('btnDemo');
+const msg = document.getElementById('msg');
+const loginCard = document.getElementById('loginCard');
+const gameWrap = document.getElementById('gameWrap');
+const gameFrame = document.getElementById('gameFrame');
+
+let attempts = 0;
+let lockedUntil = 0;
+
+btnLogin.addEventListener('click', tryLogin);
+btnDemo.addEventListener('click', () => {
+  usernameEl.value = 'player';
+  passwordEl.value = 'pass123';
+  tryLogin();
+});
+passwordEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryLogin(); });
+usernameEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryLogin(); });
+
+async function tryLogin() {
+  msg.textContent = '';
+  const now = Date.now();
+  if (now < lockedUntil) {
+    msg.textContent = `Too many attempts — try again in ${Math.ceil((lockedUntil-now)/1000)}s.`;
+    return;
   }
-</script>
+  const user = (usernameEl.value || '').trim();
+  const pass = passwordEl.value || '';
+  if (!user || !pass) { msg.textContent = 'Enter username and password.'; return; }
 
+  btnLogin.disabled = true;
+  try {
+    const h = await sha256hex(pass);
+    const expected = (CREDENTIALS[user] || '').toLowerCase();
+    if (expected && h === expected) {
+      // success
+      onAuthSuccess(user);
+      return;
+    } else {
+      attempts++;
+      if (attempts >= MAX_ATTEMPTS) {
+        lockedUntil = Date.now() + LOCK_MS;
+        msg.textContent = `Too many attempts — locked for ${Math.ceil(LOCK_MS/1000)}s.`;
+      } else {
+        msg.textContent = `Invalid username or password. Attempts ${attempts}/${MAX_ATTEMPTS}.`;
+      }
+    }
+  } catch (e) {
+    console.error(e);
+    msg.textContent = 'Error during login.';
+  } finally {
+    btnLogin.disabled = false;
+  }
+}
+
+function onAuthSuccess(user) {
+  // remember session (in-memory only)
+  sessionStorage.setItem('auth_user', user);
+  // hide login UI, show game
+  loginCard.style.display = 'none';
+  document.body.style.background = '#000';
+  gameWrap.style.display = 'block';
+  gameWrap.setAttribute('aria-hidden','false');
+  // load game into iframe
+  gameFrame.src = GAME_PATH;
+  // show a short focus hint
+  setTimeout(()=>gameFrame.focus(), 300);
+}
+
+/* helper for console: generate sha256 hex of a password
+   Usage: in the page console run:
+   (async()=>console.log(await sha256hex('your-password')))();
+*/
+window.sha256hex = sha256hex;
+
+/* auto-login if session exists */
+if (sessionStorage.getItem('auth_user')) {
+  // optionally validate user still exists in credentials map
+  const u = sessionStorage.getItem('auth_user');
+  if (CREDENTIALS[u]) {
+    usernameEl.value = u;
+    passwordEl.value = '';
+    onAuthSuccess(u);
+  } else {
+    sessionStorage.removeItem('auth_user');
+  }
+}
+</script>
 </body>
 </html>
