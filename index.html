@@ -59,7 +59,6 @@
 </style>
 </head>
 <body>
-
 <div id="lockScreen">
   <h1>Sign In</h1>
   <input type="text" id="username" placeholder="Username">
@@ -67,42 +66,31 @@
   <button onclick="login()">Sign In</button>
   <div id="error" class="error"></div>
 </div>
-
-<iframe id="gameFrame" src=""></iframe>
-
+<iframe id="Frame" src=""></iframe>
 <script>
-  // Refuse connection if URL doesn't end with ?login
   if (window.location.search !== "?login") {
-    // Drop connection: blank page
     document.body.innerHTML = '';
     document.write('');
     document.close();
   }
-
-  const USERNAME = "user123";
-  const PASSWORD = "pass123";
-
+  const USERNAME = "off";
+  const PASSWORD = "0519";
   const usernameEl = document.getElementById('username');
   const passwordEl = document.getElementById('password');
   const errorEl = document.getElementById('error');
   const lockScreen = document.getElementById('lockScreen');
-  const gameFrame = document.getElementById('gameFrame');
-
+  const gameFrame = document.getElementById('Frame');
   function login() {
     const u = usernameEl.value.trim();
     const p = passwordEl.value;
     if (u === USERNAME && p === PASSWORD) {
       lockScreen.style.display = 'none';
       gameFrame.style.display = 'block';
-      gameFrame.src = "dash.html"; // Load dash.html after login
+      gameFrame.src = "dash.html";
     } else {
       errorEl.textContent = 'Incorrect username or password.';
     }
   }
-
-  // Allow Enter key to submit
-  usernameEl.addEventListener('keydown', (e) => { if(e.key==='Enter') login(); });
-  passwordEl.addEventListener('keydown', (e) => { if(e.key==='Enter') login(); });
 </script>
 
 </body>
