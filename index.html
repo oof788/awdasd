@@ -71,6 +71,14 @@
 <iframe id="gameFrame" src=""></iframe>
 
 <script>
+  // Refuse connection if URL doesn't end with ?login
+  if (window.location.search !== "?login") {
+    // Drop connection: blank page
+    document.body.innerHTML = '';
+    document.write('');
+    document.close();
+  }
+
   const USERNAME = "user123";
   const PASSWORD = "pass123";
 
