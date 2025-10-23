@@ -61,17 +61,17 @@
   <button onclick="unlock()">Unlock</button>
 </div>
 
-<iframe id="gameFrame" src=""></iframe>
+<iframe id="gameFrame"></iframe>
 
 <script>
-  const correctPassword = "letmein"; // Change this to your desired password
+  const correctPassword = "letmein"; // ← change this password
 
   function unlock() {
     const entered = document.getElementById("password").value;
     if (entered === correctPassword) {
       document.getElementById("lockScreen").style.display = "none";
       const frame = document.getElementById("gameFrame");
-      frame.src = "./index.html"; // The Scratch game’s HTML file (from extracted ZIP)
+      frame.src = "./game.html"; // ← renamed Scratch game HTML
       frame.style.display = "block";
     } else {
       alert("Incorrect password!");
